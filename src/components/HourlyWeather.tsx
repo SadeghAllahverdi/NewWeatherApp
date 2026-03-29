@@ -1,162 +1,175 @@
-// prettier-ignore
-import { LiquidGlass as NormalGlass } from "@liquidglass/react";
-import type { WeatherData } from "../assets/api/WeatherApi";
-import { Line } from "react-chartjs-2";
+import { useState, useEffect } from "react"
+import { TrendingUp, TrendingDown } from "lucide-react"
+import type { WeatherData } from "../assets/api/WeatherApi"
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card"
 import {
-  Chart as ChartJS,
-  LineElement,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  Tooltip,
-  Legend,
-} from "chart.js";
-ChartJS.register(
-  LineElement,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  Tooltip,
-  Legend
-);
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "./ui/chart"
 
-interface HourlyWeather {
-  info?: WeatherData["hourly"];
+interface HourlyWeatherProps {
+  info?: WeatherData["hourly"]
 }
-export default function HourlyWeather(weather: Readonly<HourlyWeather>) {
-  const { info } = weather;
-  if (!info) {
-    return (
-      <NormalGlass
-        borderRadius={20}
-        blur={2}
-        contrast={1.15}
-        brightness={1.05}
-        saturation={1.1}
-        elasticity={0.3}
-      >
-        <div
-          className="px-8 py-4 text-dark text-lg dark:text-white
-        text-shadow-[0_10px_20px_rgba(0,0,0,0.19),0_6px_6px_rgba(0,0,0,0.23)]"
-        >
-          Loading...
-        </div>
-      </NormalGlass>
-    );
-  }
-  const maxTemperature_2m = Math.round(Math.max(...info.temperature_2m) + 1);
-  const minTemperature_2m = Math.round(Math.min(...info.temperature_2m) - 1);
-  const max_Humidity = Math.round(Math.max(...info.relative_humidity_2m) + 1);
-  const min_Humidity = Math.round(Math.min(...info.relative_humidity_2m) - 1);
-  const max_Dew = Math.round(Math.max(...info.dew_point_2m) + 1);
-  const min_Dew = Math.round(Math.min(...info.dew_point_2m) - 1);
 
-  const data = {
-    labels: info.time.map((t) =>
-      new Date(t).toLocaleString("de-DE", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    ),
-    datasets: [
-      {
-        label: "temperature (°C)",
-        data: info.temperature_2m,
-        borderColor: "#E52B50",
-        borderWidth: 3,
-        pointRadius: 2,
-        pointHoverBackgroundColor: "#FF69B4 ",
-        tension: 0.4,
-        fill: false,
-        yAxisID: "temp",
-      },
-      {
-        label: "humidity (%)",
-        data: info.relative_humidity_2m,
-        borderColor: "#0CAFFF",
-        borderWidth: 3,
-        pointRadius: 2,
-        pointHoverBackgroundColor: "#B9D9EB",
-        tension: 0.4,
-        fill: false,
-        yAxisID: "humid",
-      },
-      {
-        label: "dew (%)",
-        data: info.dew_point_2m,
-        borderColor: "#FF00FF",
-        borderWidth: 3,
-        pointRadius: 2,
-        pointHoverBackgroundColor: "#00FFFF",
-        tension: 0.4,
-        fill: false,
-        yAxisID: "dew",
-      },
-    ],
-  };
-  const options = {
-    plugins: {
-      legend: {
-        display: true,
-        labels: {
-          color: "white",
-          borderRadius: 4,
-          font: { size: 14, family: "'Roboto Serif', serif" },
-        },
-      },
-    },
-    scales: {
-      temp: {
-        min: minTemperature_2m,
-        max: maxTemperature_2m,
-        ticks: {
-          color: "#E52B50",
-          count: 6,
-          font: { size: 14, family: "'Roboto Serif', serif" },
-        },
-      },
-      humid: {
-        min: min_Humidity,
-        max: max_Humidity,
-        ticks: {
-          color: "#0CAFFF",
-          count: 6,
-          font: { size: 14, family: "'Roboto Serif', serif" },
-        },
-      },
-      dew: {
-        min: min_Dew,
-        max: max_Dew,
-        ticks: {
-          color: "#FF00FF",
-          count: 6,
-          font: { size: 14, family: "'Roboto Serif', serif" },
-        },
-      },
-      x: {
-        ticks: {
-          color: "white",
-          font: { size: 14, family: "'Roboto Serif', serif" },
-        },
-      },
-    },
-    responsive: true,
-    maintainAspectRatio: false,
-  };
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => globalThis.innerWidth < 768)
+  useEffect(() => {
+    const mq = globalThis.matchMedia("(max-width: 767px)")
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
+  return isMobile
+}
+
+interface MetricChartProps {
+  data: { time: string; value: number }[]
+  config: ChartConfig
+  dataKey: string
+  gradientId: string
+  color: string
+  title: string
+  description: string
+  unit: string
+  isMobile: boolean
+}
+
+function MetricChart({
+  data,
+  config,
+  dataKey,
+  gradientId,
+  color,
+  title,
+  description,
+  unit,
+  isMobile,
+}: Readonly<MetricChartProps>) {
+  const values = data.map((d) => d.value)
+  const min = Math.min(...values).toFixed(1)
+  const max = Math.max(...values).toFixed(1)
+  const trending = (values.at(-1) ?? 0) > (values.at(0) ?? 0)
 
   return (
-    <NormalGlass
-      borderRadius={20}
-      blur={2}
-      contrast={1.15}
-      brightness={1}
-      saturation={1.1}
-      elasticity={0.3}
-    >
-      <div className="w-full h-full p-1 md:p-7 hover:scale-105 transition duration-500 ease-in-out">
-        {/* <Line data={data} options={options} /> */}
-        <Line data={data} options={options} />
+    <Card className="flex flex-1 flex-col hover:scale-105 transition duration-500 ease-in-out">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+
+      <CardContent className="pb-0">
+        <ChartContainer config={config} className="h-[180px] w-full">
+          <AreaChart
+            accessibilityLayer
+            data={data}
+            margin={{ left: isMobile ? 4 : 12, right: isMobile ? 4 : 12 }}
+          >
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={color} stopOpacity={0.8} />
+                <stop offset="95%" stopColor={color} stopOpacity={0.1} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="time"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              interval={isMobile ? 5 : 2}
+              tickFormatter={(v: string) => v}
+            />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <Area
+              dataKey={dataKey}
+              type="natural"
+              fill={`url(#${gradientId})`}
+              fillOpacity={0.4}
+              stroke={color}
+              strokeWidth={2}
+            />
+          </AreaChart>
+        </ChartContainer>
+      </CardContent>
+
+      <CardFooter>
+        <div className="flex w-full items-start gap-2 text-sm">
+          <div className="grid gap-2">
+            <div className="flex items-center gap-2 leading-none font-medium">
+              {trending ? "Trending up" : "Trending down"}{" "}
+              {trending
+                ? <TrendingUp className="h-4 w-4" />
+                : <TrendingDown className="h-4 w-4" />}
+            </div>
+            <div className="flex items-center gap-2 leading-none text-zinc-500">
+              {min}{unit} — {max}{unit} over 24 h
+            </div>
+          </div>
+        </div>
+      </CardFooter>
+    </Card>
+  )
+}
+
+export default function HourlyWeather({ info }: Readonly<HourlyWeatherProps>) {
+  const isMobile = useIsMobile()
+
+  if (!info) {
+    return (
+      <div className="w-full flex flex-col md:flex-row gap-5">
+        {["Temperature", "Humidity", "Dew Point"].map((label) => (
+          <Card key={label} className="flex-1 p-6 text-zinc-400">Loading {label}...</Card>
+        ))}
       </div>
-    </NormalGlass>
-  );
+    )
+  }
+
+  const times = info.time.map((t) =>
+    new Date(t).toLocaleString("de-DE", { hour: "2-digit", minute: "2-digit" })
+  )
+
+  const tempData  = times.map((time, i) => ({ time, value: Math.round(info.temperature_2m[i] * 10) / 10 }))
+  const humidData = times.map((time, i) => ({ time, value: Math.round(info.relative_humidity_2m[i]) }))
+  const dewData   = times.map((time, i) => ({ time, value: Math.round(info.dew_point_2m[i] * 10) / 10 }))
+
+  return (
+    <div className="w-full flex flex-col md:flex-row gap-5">
+      <MetricChart
+        data={tempData}
+        config={{ value: { label: "Temperature", color: "#E52B50", unit: "°C" } } satisfies ChartConfig}
+        dataKey="value"
+        gradientId="fillTemperature"
+        color="#E52B50"
+        title="Temperature"
+        description="Hourly temperature · °C"
+        unit="°C"
+        isMobile={isMobile}
+      />
+      <MetricChart
+        data={humidData}
+        config={{ value: { label: "Humidity", color: "#0CAFFF", unit: "%" } } satisfies ChartConfig}
+        dataKey="value"
+        gradientId="fillHumidity"
+        color="#0CAFFF"
+        title="Humidity"
+        description="Relative humidity · %"
+        unit="%"
+        isMobile={isMobile}
+      />
+      <MetricChart
+        data={dewData}
+        config={{ value: { label: "Dew Point", color: "#C084FC", unit: "°C" } } satisfies ChartConfig}
+        dataKey="value"
+        gradientId="fillDew"
+        color="#C084FC"
+        title="Dew Point"
+        description="Dew point temperature · °C"
+        unit="°C"
+        isMobile={isMobile}
+      />
+    </div>
+  )
 }

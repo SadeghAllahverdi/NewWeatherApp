@@ -47,7 +47,7 @@ export default function App() {
               <DailyWeather info={weather?.daily} />
             </div>
           </div>
-          <div className="w-full h-64 rounded-2xl hover:scale-105 transition duration-500 ease-in-out">
+          <div className="w-full">
             <HourlyWeather info={weather?.hourly} />
           </div>
         </div>
